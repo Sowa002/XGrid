@@ -4,9 +4,6 @@ import pickle
 from io import BytesIO
 import matplotlib.pyplot as plt
 
-# ==================================================
-# KONFIGURASI HALAMAN
-# ==================================================
 st.set_page_config(
     page_title="Prediksi Dropout Mahasiswa",
     layout="wide"
@@ -23,128 +20,188 @@ def load_model():
 model = load_model()
 
 # ==================================================
-# KOLOM FITUR (URUTAN WAJIB SESUAI TRAINING)
+# DEFINISI FITUR SESUAI TRAINING (36 FITUR)
 # ==================================================
 FEATURE_COLUMNS = [
-    "Marital status","Application mode","Application order","Course",
-    "Daytime/evening attendance","Previous qualification",
-    "Previous qualification (grade)","Admission grade","Displaced",
-    "Educational special needs","Debtor","Tuition fees up to date","Gender",
-    "Scholarship holder","Age at enrollment","International",
-    "Curricular units 1st sem (credited)","Curricular units 1st sem (enrolled)",
-    "Curricular units 1st sem (evaluations)","Curricular units 1st sem (approved)",
-    "Curricular units 1st sem (grade)",
-    "Curricular units 1st sem (without evaluations)",
-    "Curricular units 2nd sem (credited)","Curricular units 2nd sem (enrolled)",
-    "Curricular units 2nd sem (evaluations)","Curricular units 2nd sem (approved)",
-    "Curricular units 2nd sem (grade)",
-    "Curricular units 2nd sem (without evaluations)",
-    "Unemployment rate","Inflation rate","GDP"
+    'Marital status',
+    'Application mode',
+    'Application order',
+    'Course',
+    'Daytime/evening attendance\t',
+    'Previous qualification',
+    'Previous qualification (grade)',
+    'Nacionality',
+    "Mother's qualification",
+    "Father's qualification",
+    "Mother's occupation",
+    "Father's occupation",
+    'Admission grade',
+    'Displaced',
+    'Educational special needs',
+    'Debtor',
+    'Tuition fees up to date',
+    'Gender',
+    'Scholarship holder',
+    'Age at enrollment',
+    'International',
+    'Curricular units 1st sem (credited)',
+    'Curricular units 1st sem (enrolled)',
+    'Curricular units 1st sem (evaluations)',
+    'Curricular units 1st sem (approved)',
+    'Curricular units 1st sem (grade)',
+    'Curricular units 1st sem (without evaluations)',
+    'Curricular units 2nd sem (credited)',
+    'Curricular units 2nd sem (enrolled)',
+    'Curricular units 2nd sem (evaluations)',
+    'Curricular units 2nd sem (approved)',
+    'Curricular units 2nd sem (grade)',
+    'Curricular units 2nd sem (without evaluations)',
+    'Unemployment rate',
+    'Inflation rate',
+    'GDP'
 ]
 
-# ==================================================
-# TEMPLATE & DEMO
-# ==================================================
 template_df = pd.DataFrame(columns=FEATURE_COLUMNS)
-demo_df = pd.DataFrame([[0]*len(FEATURE_COLUMNS)], columns=FEATURE_COLUMNS)
 
 # ==================================================
-# TABS
+# LAYOUT TAB
 # ==================================================
-tab1, tab2 = st.tabs(["ℹ️ Informasi", "📊 Prediksi"])
+tab1, tab2 = st.tabs(["🏠 Beranda", "📊 Prediksi"])
 
+# ==================================================
+# TAB 1 — BERANDA
+# ==================================================
 with tab1:
-    st.title("🎓 Prediksi Dropout Mahasiswa")
+    st.title("🎓 Aplikasi Prediksi Dropout Mahasiswa")
+
     st.markdown("""
-    Aplikasi ini memprediksi **Dropout / Graduate**
-    menggunakan **model XGBoost** yang telah dilatih sebelumnya.
+    Selamat datang di aplikasi **Prediksi Dropout Mahasiswa**.
+
+    Aplikasi ini menggunakan algoritma **XGBoost** yang telah dilatih dengan data mahasiswa dari institusi pendidikan tinggi. Tujuan utama aplikasi ini adalah membantu:
+
+    - 🏫 **Institusi pendidikan** dalam mendeteksi risiko mahasiswa dropout
+    - 📊 **Analisis akademik** berdasarkan indikator historis
+    - 🎯 **Pengambilan keputusan** untuk intervensi dini
+
+    ---
+    ## 🔍 Bagaimana aplikasi bekerja?
+
+    1. **Input data mahasiswa** dalam format Excel sesuai template
+    2. Sistem akan otomatis melakukan:
+       - Validasi struktur kolom
+       - Validasi nilai kosong
+       - Konversi tipe data
+    3. Model XGBoost akan menghitung prediksi:
+       - **0 = Dropout**
+       - **1 = Graduate**
+    4. Hasil dapat dilihat langsung dan diunduh kembali dalam format Excel
+
+    ---
+    ## 📌 Keunggulan Aplikasi
+
+    - Prediksi batch (banyak data sekaligus)
+    - Template data otomatis
+    - Validasi struktur & tipe data
+    - Visualisasi hasil prediksi
+    - Tampilan antarmuka interaktif
+
+    Silakan lanjut ke tab **Prediksi** untuk mulai menggunakan aplikasi.
     """)
 
+# ==================================================
+# TAB 2 — PREDIKSI
+# ==================================================
 with tab2:
+
     st.title("📊 Prediksi Data Mahasiswa")
 
-    col1, col2 = st.columns(2)
+    st.markdown("""
+    ### 📝 Petunjuk Penggunaan
 
-    # ---------- TEMPLATE ----------
-    with col1:
-        buf = BytesIO()
-        template_df.to_excel(buf, index=False)
-        st.download_button(
-            "⬇️ Download Template Excel",
-            data=buf.getvalue(),
-            file_name="template_data_mahasiswa.xlsx"
-        )
+    1. **Download template Excel** menggunakan tombol di bawah
+    2. **Isi data mahasiswa** sesuai format dan urutan kolom
+    3. Pastikan **tidak ada nilai kosong**
+    4. Unggah file Excel ke aplikasi
+    5. Klik tombol **Prediksi** untuk melihat hasilnya
 
-    # ---------- DEMO ----------
-    with col2:
-        demo_buf = BytesIO()
-        demo_df.to_excel(demo_buf, index=False)
-        st.download_button(
-            "🧪 Download Demo Data",
-            data=demo_buf.getvalue(),
-            file_name="demo_data.xlsx"
-        )
+    ---
+    """)
+
+    # Download template
+    buf = BytesIO()
+    template_df.to_excel(buf, index=False)
+
+    st.download_button(
+        "⬇️ Download Template Excel (36 kolom)",
+        buf.getvalue(),
+        "template_data_mahasiswa.xlsx"
+    )
 
     st.divider()
 
-    uploaded_file = st.file_uploader(
+    # Upload Excel
+    uploaded = st.file_uploader(
         "📂 Upload file Excel",
         type=["xlsx", "xls"]
     )
 
-    if uploaded_file:
-        df = pd.read_excel(uploaded_file)
+    if uploaded:
+        df = pd.read_excel(uploaded)
+        st.write("Preview data:")
         st.dataframe(df.head())
 
-        # ---------- VALIDASI KOLOM ----------
-        if set(df.columns) != set(FEATURE_COLUMNS):
-            st.error("❌ Nama kolom tidak sesuai template")
+        # VALIDASI KOLOM
+        missing = [c for c in FEATURE_COLUMNS if c not in df.columns]
+        extra = [c for c in df.columns if c not in FEATURE_COLUMNS]
+
+        if missing:
+            st.error(f"❌ Kolom hilang: {missing}")
             st.stop()
 
+        if extra:
+            st.warning(f"⚠️ Kolom tambahan diabaikan: {extra}")
+
+        # URUTKAN SESUAI MODEL
+        df = df[FEATURE_COLUMNS]
+
+        # VALIDASI NILAI KOSONG
         if df.isnull().any().any():
-            st.error("❌ Terdapat nilai kosong (NaN)")
+            st.error("❌ Data mengandung nilai kosong. Mohon lengkapi sebelum upload.")
             st.stop()
 
-        st.success("✅ Data valid")
+        # KONVERSI NUMERIC
+        try:
+            df = df.apply(pd.to_numeric, errors="raise")
+        except Exception as e:
+            st.error(f"❌ Error konversi data ke numeric: {e}")
+            st.stop()
+
+        st.success("✅ Data valid dan siap diprediksi!")
 
         if st.button("🔍 Jalankan Prediksi"):
-            try:
-                # 🔐 REORDER KOLOM
-                df = df[FEATURE_COLUMNS]
+            X = df.values
+            preds = model.predict(X)
+            probs = model.predict_proba(X)
 
-                # 🔥 PAKSA NUMERIC
-                df = df.apply(pd.to_numeric, errors="raise")
+            df["Prediction"] = preds
+            df["Label"] = df["Prediction"].map({0: "Dropout", 1: "Graduate"})
+            df["Prob_Graduate"] = probs[:, 1]
 
-                # 🔥 GUNAKAN NUMPY ARRAY
-                X = df.values
+            st.subheader("📄 Hasil Prediksi")
+            st.dataframe(df)
 
-                preds = model.predict(X)
-                probs = model.predict_proba(X)
+            # GRAFIK
+            fig, ax = plt.subplots()
+            df["Label"].value_counts().plot(kind="bar", ax=ax)
+            ax.set_ylabel("Jumlah Mahasiswa")
+            st.pyplot(fig)
 
-                df_result = df.copy()
-                df_result["Prediction"] = preds
-                df_result["Label"] = df_result["Prediction"].map(
-                    {0: "Dropout", 1: "Graduate"}
-                )
-                df_result["Prob_Graduate"] = probs[:, 1]
+            # DOWNLOAD HASIL
+            out = BytesIO()
+            df.to_excel(out, index=False)
 
-                st.subheader("📄 Hasil Prediksi")
-                st.dataframe(df_result)
-
-                # ---------- GRAFIK ----------
-                fig, ax = plt.subplots()
-                df_result["Label"].value_counts().plot(kind="bar", ax=ax)
-                ax.set_ylabel("Jumlah Mahasiswa")
-                st.pyplot(fig)
-
-                # ---------- DOWNLOAD ----------
-                out = BytesIO()
-                df_result.to_excel(out, index=False)
-                st.download_button(
-                    "⬇️ Download Hasil (Excel)",
-                    data=out.getvalue(),
-                    file_name="hasil_prediksi.xlsx"
-                )
-
-            except Exception as e:
-                st.error(f"Terjadi kesalahan prediksi:\n{e}")
+            st.download_button(
+                "⬇️ Download Hasil Prediksi",
+                out.getvalue(),
+                "hasil_prediksi.xlsx"
+            )
