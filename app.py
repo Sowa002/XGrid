@@ -148,7 +148,11 @@ with tab2:
     if uploaded:
         df = pd.read_excel(uploaded)
         st.write("Preview data:")
-        st.dataframe(df.head())
+        st.dataframe(
+            df,
+                use_container_width=True,
+                height=450,
+            )
 
         # VALIDASI KOLOM
         missing = [c for c in FEATURE_COLUMNS if c not in df.columns]
@@ -205,3 +209,4 @@ with tab2:
                 out.getvalue(),
                 "hasil_prediksi.xlsx"
             )
+
