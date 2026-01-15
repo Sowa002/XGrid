@@ -23,7 +23,7 @@ def load_model():
 model = load_model()
 
 # ==================================================
-# KOLOM FITUR (URUTAN WAJIB BENAR)
+# KOLOM FITUR (URUTAN WAJIB SESUAI TRAINING)
 # ==================================================
 FEATURE_COLUMNS = [
     "Marital status","Application mode","Application order","Course",
@@ -39,7 +39,7 @@ FEATURE_COLUMNS = [
     "Curricular units 2nd sem (evaluations)","Curricular units 2nd sem (approved)",
     "Curricular units 2nd sem (grade)",
     "Curricular units 2nd sem (without evaluations)",
-    "Unemployment rate","Inflationation rate","GDP"
+    "Unemployment rate","Inflation rate","GDP"
 ]
 
 # ==================================================
@@ -56,7 +56,7 @@ tab1, tab2 = st.tabs(["ℹ️ Informasi", "📊 Prediksi"])
 with tab1:
     st.title("🎓 Prediksi Dropout Mahasiswa")
     st.markdown("""
-    Aplikasi ini memprediksi status mahasiswa
+    Aplikasi ini memprediksi **Dropout / Graduate**
     menggunakan **model XGBoost** yang telah dilatih sebelumnya.
     """)
 
@@ -65,15 +65,17 @@ with tab2:
 
     col1, col2 = st.columns(2)
 
+    # ---------- TEMPLATE ----------
     with col1:
         buf = BytesIO()
         template_df.to_excel(buf, index=False)
         st.download_button(
-            "⬇️ Download Template",
+            "⬇️ Download Template Excel",
             data=buf.getvalue(),
             file_name="template_data_mahasiswa.xlsx"
         )
 
+    # ---------- DEMO ----------
     with col2:
         demo_buf = BytesIO()
         demo_df.to_excel(demo_buf, index=False)
@@ -94,44 +96,55 @@ with tab2:
         df = pd.read_excel(uploaded_file)
         st.dataframe(df.head())
 
-        # ---------- VALIDASI ----------
+        # ---------- VALIDASI KOLOM ----------
         if set(df.columns) != set(FEATURE_COLUMNS):
             st.error("❌ Nama kolom tidak sesuai template")
             st.stop()
 
         if df.isnull().any().any():
-            st.error("❌ Data mengandung nilai kosong (NaN)")
+            st.error("❌ Terdapat nilai kosong (NaN)")
             st.stop()
 
         st.success("✅ Data valid")
 
         if st.button("🔍 Jalankan Prediksi"):
-            # 🔐 PAKSA URUTAN
-            df = df[FEATURE_COLUMNS]
+            try:
+                # 🔐 REORDER KOLOM
+                df = df[FEATURE_COLUMNS]
 
-            # 🔥 FIX UTAMA ADA DI SINI
-            preds = model.predict(df, validate_features=False)
-            probs = model.predict_proba(df, validate_features=False)
+                # 🔥 PAKSA NUMERIC
+                df = df.apply(pd.to_numeric, errors="raise")
 
-            df_result = df.copy()
-            df_result["Prediction"] = preds
-            df_result["Label"] = df_result["Prediction"].map(
-                {0: "Dropout", 1: "Graduate"}
-            )
-            df_result["Prob_Graduate"] = probs[:, 1]
+                # 🔥 GUNAKAN NUMPY ARRAY
+                X = df.values
 
-            st.dataframe(df_result)
+                preds = model.predict(X)
+                probs = model.predict_proba(X)
 
-            # ---------- GRAFIK ----------
-            fig, ax = plt.subplots()
-            df_result["Label"].value_counts().plot(kind="bar", ax=ax)
-            st.pyplot(fig)
+                df_result = df.copy()
+                df_result["Prediction"] = preds
+                df_result["Label"] = df_result["Prediction"].map(
+                    {0: "Dropout", 1: "Graduate"}
+                )
+                df_result["Prob_Graduate"] = probs[:, 1]
 
-            # ---------- DOWNLOAD ----------
-            out = BytesIO()
-            df_result.to_excel(out, index=False)
-            st.download_button(
-                "⬇️ Download Hasil",
-                data=out.getvalue(),
-                file_name="hasil_prediksi.xlsx"
-            )
+                st.subheader("📄 Hasil Prediksi")
+                st.dataframe(df_result)
+
+                # ---------- GRAFIK ----------
+                fig, ax = plt.subplots()
+                df_result["Label"].value_counts().plot(kind="bar", ax=ax)
+                ax.set_ylabel("Jumlah Mahasiswa")
+                st.pyplot(fig)
+
+                # ---------- DOWNLOAD ----------
+                out = BytesIO()
+                df_result.to_excel(out, index=False)
+                st.download_button(
+                    "⬇️ Download Hasil (Excel)",
+                    data=out.getvalue(),
+                    file_name="hasil_prediksi.xlsx"
+                )
+
+            except Exception as e:
+                st.error(f"Terjadi kesalahan prediksi:\n{e}")
