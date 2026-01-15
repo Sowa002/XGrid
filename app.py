@@ -23,7 +23,7 @@ def load_model():
 model = load_model()
 
 # ==================================================
-# KOLOM FITUR (HARUS SAMA & URUT DENGAN TRAINING)
+# KOLOM FITUR (URUTAN WAJIB BENAR)
 # ==================================================
 FEATURE_COLUMNS = [
     "Marital status","Application mode","Application order","Course",
@@ -39,11 +39,11 @@ FEATURE_COLUMNS = [
     "Curricular units 2nd sem (evaluations)","Curricular units 2nd sem (approved)",
     "Curricular units 2nd sem (grade)",
     "Curricular units 2nd sem (without evaluations)",
-    "Unemployment rate","Inflation rate","GDP"
+    "Unemployment rate","Inflationation rate","GDP"
 ]
 
 # ==================================================
-# TEMPLATE & DEMO DATA
+# TEMPLATE & DEMO
 # ==================================================
 template_df = pd.DataFrame(columns=FEATURE_COLUMNS)
 demo_df = pd.DataFrame([[0]*len(FEATURE_COLUMNS)], columns=FEATURE_COLUMNS)
@@ -53,58 +53,34 @@ demo_df = pd.DataFrame([[0]*len(FEATURE_COLUMNS)], columns=FEATURE_COLUMNS)
 # ==================================================
 tab1, tab2 = st.tabs(["ℹ️ Informasi", "📊 Prediksi"])
 
-# ==================================================
-# TAB 1 — INFORMASI
-# ==================================================
 with tab1:
     st.title("🎓 Prediksi Dropout Mahasiswa")
     st.markdown("""
-    Aplikasi ini memprediksi **Dropout atau Graduate** mahasiswa
+    Aplikasi ini memprediksi status mahasiswa
     menggunakan **model XGBoost** yang telah dilatih sebelumnya.
-
-    **Fitur utama:**
-    - Batch prediction (Excel)
-    - Validasi data otomatis
-    - Template input
-    - Visualisasi hasil
     """)
 
-# ==================================================
-# TAB 2 — PREDIKSI
-# ==================================================
 with tab2:
     st.title("📊 Prediksi Data Mahasiswa")
 
-    st.markdown("""
-    ### 📝 Petunjuk
-    1. Download template Excel
-    2. Isi data sesuai kolom
-    3. Tidak boleh ada nilai kosong
-    4. Upload file dan jalankan prediksi
-    """)
-
     col1, col2 = st.columns(2)
 
-    # ---------- TEMPLATE ----------
     with col1:
         buf = BytesIO()
         template_df.to_excel(buf, index=False)
         st.download_button(
-            "⬇️ Download Template Excel",
+            "⬇️ Download Template",
             data=buf.getvalue(),
-            file_name="template_data_mahasiswa.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            file_name="template_data_mahasiswa.xlsx"
         )
 
-    # ---------- DEMO ----------
     with col2:
         demo_buf = BytesIO()
         demo_df.to_excel(demo_buf, index=False)
         st.download_button(
             "🧪 Download Demo Data",
             data=demo_buf.getvalue(),
-            file_name="demo_data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            file_name="demo_data.xlsx"
         )
 
     st.divider()
@@ -118,32 +94,24 @@ with tab2:
         df = pd.read_excel(uploaded_file)
         st.dataframe(df.head())
 
-        # ---------- VALIDASI KOLOM ----------
-        missing = [c for c in FEATURE_COLUMNS if c not in df.columns]
-        extra = [c for c in df.columns if c not in FEATURE_COLUMNS]
-
-        if missing or extra:
-            st.error("❌ Struktur kolom tidak sesuai template")
-            if missing:
-                st.warning(f"Kolom hilang: {missing}")
-            if extra:
-                st.warning(f"Kolom tidak dikenali: {extra}")
+        # ---------- VALIDASI ----------
+        if set(df.columns) != set(FEATURE_COLUMNS):
+            st.error("❌ Nama kolom tidak sesuai template")
             st.stop()
 
-        # ---------- VALIDASI NaN ----------
         if df.isnull().any().any():
-            st.error("❌ Terdapat nilai kosong (NaN)")
-            st.warning(df.columns[df.isnull().any()].tolist())
+            st.error("❌ Data mengandung nilai kosong (NaN)")
             st.stop()
 
         st.success("✅ Data valid")
 
         if st.button("🔍 Jalankan Prediksi"):
-            # 🔐 PAKSA URUTAN KOLOM (INI KUNCI FIX ERROR)
+            # 🔐 PAKSA URUTAN
             df = df[FEATURE_COLUMNS]
 
-            preds = model.predict(df)
-            probs = model.predict_proba(df)
+            # 🔥 FIX UTAMA ADA DI SINI
+            preds = model.predict(df, validate_features=False)
+            probs = model.predict_proba(df, validate_features=False)
 
             df_result = df.copy()
             df_result["Prediction"] = preds
@@ -152,22 +120,18 @@ with tab2:
             )
             df_result["Prob_Graduate"] = probs[:, 1]
 
-            st.subheader("📄 Hasil Prediksi")
             st.dataframe(df_result)
 
             # ---------- GRAFIK ----------
-            st.subheader("📊 Ringkasan Prediksi")
             fig, ax = plt.subplots()
             df_result["Label"].value_counts().plot(kind="bar", ax=ax)
-            ax.set_ylabel("Jumlah Mahasiswa")
             st.pyplot(fig)
 
-            # ---------- DOWNLOAD HASIL ----------
+            # ---------- DOWNLOAD ----------
             out = BytesIO()
             df_result.to_excel(out, index=False)
             st.download_button(
-                "⬇️ Download Hasil (Excel)",
+                "⬇️ Download Hasil",
                 data=out.getvalue(),
-                file_name="hasil_prediksi.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                file_name="hasil_prediksi.xlsx"
             )
