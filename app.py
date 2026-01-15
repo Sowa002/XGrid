@@ -23,7 +23,7 @@ def load_model():
 model = load_model()
 
 # ==================================================
-# KOLOM DATASET (HARUS SAMA DENGAN TRAINING)
+# KOLOM FITUR (HARUS SAMA & URUT DENGAN TRAINING)
 # ==================================================
 FEATURE_COLUMNS = [
     "Marital status","Application mode","Application order","Course",
@@ -46,11 +46,7 @@ FEATURE_COLUMNS = [
 # TEMPLATE & DEMO DATA
 # ==================================================
 template_df = pd.DataFrame(columns=FEATURE_COLUMNS)
-
-demo_df = pd.DataFrame(
-    [[0]*len(FEATURE_COLUMNS)],
-    columns=FEATURE_COLUMNS
-)
+demo_df = pd.DataFrame([[0]*len(FEATURE_COLUMNS)], columns=FEATURE_COLUMNS)
 
 # ==================================================
 # TABS
@@ -63,15 +59,14 @@ tab1, tab2 = st.tabs(["ℹ️ Informasi", "📊 Prediksi"])
 with tab1:
     st.title("🎓 Prediksi Dropout Mahasiswa")
     st.markdown("""
-    Aplikasi ini memprediksi **Dropout / Graduate** mahasiswa
+    Aplikasi ini memprediksi **Dropout atau Graduate** mahasiswa
     menggunakan **model XGBoost** yang telah dilatih sebelumnya.
 
     **Fitur utama:**
-    - Upload Excel
+    - Batch prediction (Excel)
     - Validasi data otomatis
-    - Prediksi batch
-    - Grafik ringkasan
-    - Download hasil
+    - Template input
+    - Visualisasi hasil
     """)
 
 # ==================================================
@@ -84,30 +79,30 @@ with tab2:
     ### 📝 Petunjuk
     1. Download template Excel
     2. Isi data sesuai kolom
-    3. Tidak boleh ada nilai kosong (NaN)
-    4. Upload file lalu klik **Prediksi**
+    3. Tidak boleh ada nilai kosong
+    4. Upload file dan jalankan prediksi
     """)
 
-    colA, colB = st.columns(2)
+    col1, col2 = st.columns(2)
 
     # ---------- TEMPLATE ----------
-    with colA:
-        buffer = BytesIO()
-        template_df.to_excel(buffer, index=False)
+    with col1:
+        buf = BytesIO()
+        template_df.to_excel(buf, index=False)
         st.download_button(
             "⬇️ Download Template Excel",
-            data=buffer.getvalue(),
+            data=buf.getvalue(),
             file_name="template_data_mahasiswa.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
     # ---------- DEMO ----------
-    with colB:
-        demo_buffer = BytesIO()
-        demo_df.to_excel(demo_buffer, index=False)
+    with col2:
+        demo_buf = BytesIO()
+        demo_df.to_excel(demo_buf, index=False)
         st.download_button(
             "🧪 Download Demo Data",
-            data=demo_buffer.getvalue(),
+            data=demo_buf.getvalue(),
             file_name="demo_data.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
@@ -123,54 +118,56 @@ with tab2:
         df = pd.read_excel(uploaded_file)
         st.dataframe(df.head())
 
-        # ---------- VALIDASI ----------
-        missing_cols = [c for c in FEATURE_COLUMNS if c not in df.columns]
-        extra_cols = [c for c in df.columns if c not in FEATURE_COLUMNS]
+        # ---------- VALIDASI KOLOM ----------
+        missing = [c for c in FEATURE_COLUMNS if c not in df.columns]
+        extra = [c for c in df.columns if c not in FEATURE_COLUMNS]
 
-        if missing_cols or extra_cols:
-            st.error("❌ Struktur kolom tidak sesuai")
-            if missing_cols:
-                st.warning(f"Kolom hilang: {missing_cols}")
-            if extra_cols:
-                st.warning(f"Kolom tidak dikenali: {extra_cols}")
+        if missing or extra:
+            st.error("❌ Struktur kolom tidak sesuai template")
+            if missing:
+                st.warning(f"Kolom hilang: {missing}")
+            if extra:
+                st.warning(f"Kolom tidak dikenali: {extra}")
+            st.stop()
 
-        elif df.isnull().any().any():
+        # ---------- VALIDASI NaN ----------
+        if df.isnull().any().any():
             st.error("❌ Terdapat nilai kosong (NaN)")
             st.warning(df.columns[df.isnull().any()].tolist())
+            st.stop()
 
-        else:
-            st.success("✅ Data valid")
+        st.success("✅ Data valid")
 
-            if st.button("🔍 Jalankan Prediksi"):
-                preds = model.predict(df)
-                probs = model.predict_proba(df)
+        if st.button("🔍 Jalankan Prediksi"):
+            # 🔐 PAKSA URUTAN KOLOM (INI KUNCI FIX ERROR)
+            df = df[FEATURE_COLUMNS]
 
-                df_result = df.copy()
-                df_result["Prediction"] = preds
-                df_result["Label"] = df_result["Prediction"].map(
-                    {0: "Dropout", 1: "Graduate"}
-                )
-                df_result["Prob_Graduate"] = probs[:, 1]
+            preds = model.predict(df)
+            probs = model.predict_proba(df)
 
-                st.subheader("📄 Hasil Prediksi")
-                st.dataframe(df_result)
+            df_result = df.copy()
+            df_result["Prediction"] = preds
+            df_result["Label"] = df_result["Prediction"].map(
+                {0: "Dropout", 1: "Graduate"}
+            )
+            df_result["Prob_Graduate"] = probs[:, 1]
 
-                # ---------- GRAFIK ----------
-                st.subheader("📊 Ringkasan Prediksi")
-                summary = df_result["Label"].value_counts()
+            st.subheader("📄 Hasil Prediksi")
+            st.dataframe(df_result)
 
-                fig, ax = plt.subplots()
-                summary.plot(kind="bar", ax=ax)
-                ax.set_ylabel("Jumlah Mahasiswa")
-                st.pyplot(fig)
+            # ---------- GRAFIK ----------
+            st.subheader("📊 Ringkasan Prediksi")
+            fig, ax = plt.subplots()
+            df_result["Label"].value_counts().plot(kind="bar", ax=ax)
+            ax.set_ylabel("Jumlah Mahasiswa")
+            st.pyplot(fig)
 
-                # ---------- DOWNLOAD HASIL ----------
-                out_buffer = BytesIO()
-                df_result.to_excel(out_buffer, index=False)
-
-                st.download_button(
-                    "⬇️ Download Hasil (Excel)",
-                    data=out_buffer.getvalue(),
-                    file_name="hasil_prediksi.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+            # ---------- DOWNLOAD HASIL ----------
+            out = BytesIO()
+            df_result.to_excel(out, index=False)
+            st.download_button(
+                "⬇️ Download Hasil (Excel)",
+                data=out.getvalue(),
+                file_name="hasil_prediksi.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
