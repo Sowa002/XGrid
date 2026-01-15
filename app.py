@@ -2,8 +2,13 @@ import streamlit as st
 import pandas as pd
 import pickle
 
+st.set_page_config(
+    page_title="Prediksi Dropout Mahasiswa",
+    layout="wide"
+)
+
 # =========================
-# LOAD MODEL SAJA
+# LOAD MODEL
 # =========================
 @st.cache_resource
 def load_model():
@@ -12,32 +17,94 @@ def load_model():
 
 model = load_model()
 
-st.title("🎓 Prediksi Dropout Mahasiswa")
+# =========================
+# TABS
+# =========================
+tab1, tab2 = st.tabs(["ℹ️ Informasi Aplikasi", "📊 Prediksi Data"])
 
 # =========================
-# AMBIL NAMA FITUR DARI MODEL
+# TAB 1 — INFORMASI
 # =========================
-feature_names = model.feature_names_in_
+with tab1:
+    st.title("🎓 Prediksi Dropout Mahasiswa")
 
-st.subheader("📋 Input Data Mahasiswa")
+    st.markdown("""
+    ### 📌 Tentang Aplikasi
+    Aplikasi ini digunakan untuk **memprediksi kemungkinan mahasiswa
+    mengalami dropout atau graduate** menggunakan model **XGBoost**.
 
-input_data = {}
+    ### 🧠 Model
+    - Algoritma: **XGBoost Classifier**
+    - Output:
+        - `0` → Dropout  
+        - `1` → Graduate
 
-for feature in feature_names:
-    input_data[feature] = st.number_input(feature, value=0.0)
+    ### 📂 Cara Menggunakan
+    1. Masuk ke tab **Prediksi Data**
+    2. Upload file **Excel (.xlsx) atau CSV (.csv)**
+    3. Pastikan kolom sesuai dengan dataset training
+    4. Klik **Prediksi**
+    5. Download hasil prediksi
 
-input_df = pd.DataFrame([input_data])
-
-st.dataframe(input_df)
+    ---
+    ✨ Aplikasi ini dibuat sebagai bagian dari penelitian / skripsi.
+    """)
 
 # =========================
-# PREDIKSI
+# TAB 2 — PREDIKSI
 # =========================
-if st.button("🔍 Prediksi"):
-    prediction = model.predict(input_df)
-    probability = model.predict_proba(input_df)
+with tab2:
+    st.title("📊 Prediksi Data Mahasiswa")
 
-    if prediction[0] == 1:
-        st.success(f"🎓 Graduate (Probabilitas: {probability[0][1]:.2f})")
-    else:
-        st.error(f"⚠️ Dropout (Probabilitas: {probability[0][0]:.2f})")
+    uploaded_file = st.file_uploader(
+        "Upload file Excel atau CSV",
+        type=["xlsx", "csv"]
+    )
+
+    if uploaded_file is not None:
+        # =========================
+        # BACA FILE
+        # =========================
+        if uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+
+        st.subheader("📄 Preview Data")
+        st.dataframe(df.head())
+
+        # =========================
+        # CEK KOLOM
+        # =========================
+        required_features = model.n_features_in_
+
+        st.info(f"Model membutuhkan {required_features} fitur")
+
+        if df.shape[1] != required_features:
+            st.error(
+                f"Jumlah kolom tidak sesuai! "
+                f"(Dataset: {df.shape[1]} kolom)"
+            )
+        else:
+            if st.button("🔍 Jalankan Prediksi"):
+                preds = model.predict(df)
+                probs = model.predict_proba(df)
+
+                df["Prediction"] = preds
+                df["Probability_Graduate"] = probs[:, 1]
+                df["Probability_Dropout"] = probs[:, 0]
+
+                st.subheader("✅ Hasil Prediksi")
+                st.dataframe(df)
+
+                # =========================
+                # DOWNLOAD
+                # =========================
+                csv = df.to_csv(index=False).encode("utf-8")
+
+                st.download_button(
+                    "⬇️ Download Hasil Prediksi",
+                    csv,
+                    "hasil_prediksi_dropout.csv",
+                    "text/csv"
+                )
